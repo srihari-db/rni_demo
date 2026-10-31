@@ -1,0 +1,1548 @@
+{
+  "datasets": [
+    {
+      "name": "ds_metrics",
+      "displayName": "Metrics",
+      "queryLines": [
+        "SELECT region, customer_name, product_category, product_name, inventory_value,\n              potential_excess_exposure_value, potential_excess_value, pending_request_exposure_value, near_expiry_value,\n              returned_value, avoidable_logistics_cost_12m, requests_requiring_review\n            FROM rni_demo.gold.inventory_value_metrics"
+      ]
+    },
+    {
+      "name": "ds_exposure",
+      "displayName": "Exposure",
+      "queryLines": [
+        "SELECT region, customer_name, product_category, product_name, bucket, value\n            FROM rni_demo.gold.inventory_exposure_current\n            LATERAL VIEW stack(3, 'Excess above PAR', excess_value, 'Approaching expiry (<=90d)', near_expiry_value,\n                               'Healthy', healthy_value) b AS bucket, value"
+      ]
+    },
+    {
+      "name": "ds_monthly",
+      "displayName": "Monthly",
+      "queryLines": [
+        "SELECT month, region, customer_name, product_category, product_name, series, value\n            FROM rni_demo.gold.consumption_vs_shipments_monthly\n            LATERAL VIEW stack(2, 'Shipped to sites (movement)', shipped_value, 'Consumed at sites (utilization)', consumed_value) s AS series, value"
+      ]
+    },
+    {
+      "name": "ds_returns",
+      "displayName": "Returns",
+      "queryLines": [
+        "SELECT return_month, region, customer_name, product_category, product_name, returned_value,\n              return_logistics_cost,\n              CASE WHEN potentially_avoidable THEN 'Over-allocation (potentially avoidable)' ELSE 'Short-dated / other' END AS return_type\n            FROM rni_demo.gold.returns_detail WHERE in_last_12_months"
+      ]
+    },
+    {
+      "name": "ds_top10",
+      "displayName": "Top10",
+      "queryLines": [
+        "SELECT customer_name, region, SUM(potential_excess_value) AS excess_on_hand,\n              SUM(pending_request_exposure_value) AS pending_request_exposure,\n              SUM(potential_excess_exposure_value) AS potential_excess_exposure\n            FROM rni_demo.gold.inventory_value_metrics GROUP BY customer_name, region\n            ORDER BY potential_excess_exposure DESC LIMIT 10"
+      ]
+    },
+    {
+      "name": "ds_expiry",
+      "displayName": "Expiry",
+      "queryLines": [
+        "SELECT region, customer_name, product_category, product_name,\n              CONCAT(CAST(expiry_horizon_order AS STRING), '. ', expiry_horizon) AS expiry_horizon, inventory_value\n            FROM rni_demo.gold.expiry_risk_horizon"
+      ]
+    },
+    {
+      "name": "ds_queue",
+      "displayName": "Queue",
+      "queryLines": [
+        "SELECT review_priority, customer_name, region, product_category, product_name, requested_qty, recommended_qty,\n              on_hand_qty, par_level, consumed_last_120d, risk_category, potential_exposure_value, review_reason\n            FROM rni_demo.gold.shipment_review_queue WHERE human_review_required"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "overview",
+      "displayName": "Executive overview",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "title",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## RNI Executive Inventory Intelligence"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "subtitle",
+            "multilineTextboxSpec": {
+              "lines": [
+                "FFF Enterprises \u00b7 Right Now Inventory \u00b7 **synthetic demo data** \u2014 values are illustrative; exposure is potential, not realized savings. Risk buckets are mutually exclusive."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 1,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_inventory",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_metrics",
+                  "fields": [
+                    {
+                      "name": "sum(inventory_value)",
+                      "expression": "SUM(`inventory_value`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(inventory_value)",
+                  "displayName": "Total inventory deployed",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "USD",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Total inventory deployed"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_excess",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_metrics",
+                  "fields": [
+                    {
+                      "name": "sum(potential_excess_exposure_value)",
+                      "expression": "SUM(`potential_excess_exposure_value`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(potential_excess_exposure_value)",
+                  "displayName": "Potential excess exposure",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "USD",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Potential excess exposure"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_expiry",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_metrics",
+                  "fields": [
+                    {
+                      "name": "sum(near_expiry_value)",
+                      "expression": "SUM(`near_expiry_value`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(near_expiry_value)",
+                  "displayName": "Approaching expiration (\u226490d)",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "USD",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Approaching expiration (\u226490d)"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_review",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_metrics",
+                  "fields": [
+                    {
+                      "name": "sum(requests_requiring_review)",
+                      "expression": "SUM(`requests_requiring_review`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(requests_requiring_review)",
+                  "displayName": "Requests requiring review"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Requests requiring review"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_returns",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_metrics",
+                  "fields": [
+                    {
+                      "name": "sum(returned_value)",
+                      "expression": "SUM(`returned_value`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(returned_value)",
+                  "displayName": "Returns value (12 mo)",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "USD",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Returns value (12 mo)"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_logistics",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_metrics",
+                  "fields": [
+                    {
+                      "name": "sum(avoidable_logistics_cost_12m)",
+                      "expression": "SUM(`avoidable_logistics_cost_12m`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(avoidable_logistics_cost_12m)",
+                  "displayName": "Est. avoidable logistics (12 mo)",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "USD",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Est. avoidable logistics (12 mo)"
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "exp_region",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_exposure",
+                  "fields": [
+                    {
+                      "name": "region",
+                      "expression": "`region`"
+                    },
+                    {
+                      "name": "sum(value)",
+                      "expression": "SUM(`value`)"
+                    },
+                    {
+                      "name": "bucket",
+                      "expression": "`bucket`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "region",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Region"
+                },
+                "y": {
+                  "fieldName": "sum(value)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "USD",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "USD",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "color": {
+                  "fieldName": "bucket",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Bucket"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Inventory exposure by region"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "exp_category",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_exposure",
+                  "fields": [
+                    {
+                      "name": "product_category",
+                      "expression": "`product_category`"
+                    },
+                    {
+                      "name": "sum(value)",
+                      "expression": "SUM(`value`)"
+                    },
+                    {
+                      "name": "bucket",
+                      "expression": "`bucket`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(value)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "USD",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "USD",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "product_category",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Product Category"
+                },
+                "color": {
+                  "fieldName": "bucket",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Bucket"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Inventory exposure by product category"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 5,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "cons_vs_ship",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_monthly",
+                  "fields": [
+                    {
+                      "name": "monthly(month)",
+                      "expression": "DATE_TRUNC(\"MONTH\", `month`)"
+                    },
+                    {
+                      "name": "sum(value)",
+                      "expression": "SUM(`value`)"
+                    },
+                    {
+                      "name": "series",
+                      "expression": "`series`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "monthly(month)",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Month"
+                },
+                "y": {
+                  "fieldName": "sum(value)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Inventory value (USD)",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "USD",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "color": {
+                  "fieldName": "series",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Series"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Historical consumption vs shipments"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 11,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "returns_trend",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_returns",
+                  "fields": [
+                    {
+                      "name": "monthly(return_month)",
+                      "expression": "DATE_TRUNC(\"MONTH\", `return_month`)"
+                    },
+                    {
+                      "name": "sum(returned_value)",
+                      "expression": "SUM(`returned_value`)"
+                    },
+                    {
+                      "name": "return_type",
+                      "expression": "`return_type`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "monthly(return_month)",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Return Month"
+                },
+                "y": {
+                  "fieldName": "sum(returned_value)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "USD",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "USD",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "color": {
+                  "fieldName": "return_type",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Return Type"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Return trends \u2014 last 12 months"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 11,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "top10",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_top10",
+                  "fields": [
+                    {
+                      "name": "customer_name",
+                      "expression": "`customer_name`"
+                    },
+                    {
+                      "name": "sum(potential_excess_exposure)",
+                      "expression": "SUM(`potential_excess_exposure`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(potential_excess_exposure)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "USD",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "USD",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "customer_name",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Customer Name"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Top 10 locations by potential excess inventory"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 17,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "expiry_horizon",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_expiry",
+                  "fields": [
+                    {
+                      "name": "expiry_horizon",
+                      "expression": "`expiry_horizon`"
+                    },
+                    {
+                      "name": "sum(inventory_value)",
+                      "expression": "SUM(`inventory_value`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "expiry_horizon",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Expiry Horizon"
+                },
+                "y": {
+                  "fieldName": "sum(inventory_value)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "USD",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "USD",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Expiration risk by time horizon"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 17,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "review_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_queue",
+                  "fields": [
+                    {
+                      "name": "review_priority",
+                      "expression": "`review_priority`"
+                    },
+                    {
+                      "name": "customer_name",
+                      "expression": "`customer_name`"
+                    },
+                    {
+                      "name": "product_name",
+                      "expression": "`product_name`"
+                    },
+                    {
+                      "name": "requested_qty",
+                      "expression": "`requested_qty`"
+                    },
+                    {
+                      "name": "recommended_qty",
+                      "expression": "`recommended_qty`"
+                    },
+                    {
+                      "name": "on_hand_qty",
+                      "expression": "`on_hand_qty`"
+                    },
+                    {
+                      "name": "par_level",
+                      "expression": "`par_level`"
+                    },
+                    {
+                      "name": "consumed_last_120d",
+                      "expression": "`consumed_last_120d`"
+                    },
+                    {
+                      "name": "risk_category",
+                      "expression": "`risk_category`"
+                    },
+                    {
+                      "name": "potential_exposure_value",
+                      "expression": "`potential_exposure_value`"
+                    },
+                    {
+                      "name": "review_reason",
+                      "expression": "`review_reason`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "review_priority",
+                    "displayName": "Priority"
+                  },
+                  {
+                    "fieldName": "customer_name",
+                    "displayName": "Customer"
+                  },
+                  {
+                    "fieldName": "product_name",
+                    "displayName": "Product"
+                  },
+                  {
+                    "fieldName": "requested_qty",
+                    "displayName": "Requested"
+                  },
+                  {
+                    "fieldName": "recommended_qty",
+                    "displayName": "Engine rec."
+                  },
+                  {
+                    "fieldName": "on_hand_qty",
+                    "displayName": "On hand"
+                  },
+                  {
+                    "fieldName": "par_level",
+                    "displayName": "PAR"
+                  },
+                  {
+                    "fieldName": "consumed_last_120d",
+                    "displayName": "Used 120d"
+                  },
+                  {
+                    "fieldName": "risk_category",
+                    "displayName": "Risk"
+                  },
+                  {
+                    "fieldName": "potential_exposure_value",
+                    "displayName": "Potential exposure $"
+                  },
+                  {
+                    "fieldName": "review_reason",
+                    "displayName": "Why flagged"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "High-priority shipment requests for review"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 23,
+            "width": 6,
+            "height": 8
+          }
+        }
+      ]
+    },
+    {
+      "name": "filters",
+      "displayName": "Filters",
+      "pageType": "PAGE_TYPE_GLOBAL_FILTERS",
+      "layout": [
+        {
+          "widget": {
+            "name": "f_region",
+            "queries": [
+              {
+                "name": "f_region_ds_metrics",
+                "query": {
+                  "datasetName": "ds_metrics",
+                  "fields": [
+                    {
+                      "name": "region",
+                      "expression": "`region`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_region_ds_exposure",
+                "query": {
+                  "datasetName": "ds_exposure",
+                  "fields": [
+                    {
+                      "name": "region",
+                      "expression": "`region`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_region_ds_monthly",
+                "query": {
+                  "datasetName": "ds_monthly",
+                  "fields": [
+                    {
+                      "name": "region",
+                      "expression": "`region`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_region_ds_returns",
+                "query": {
+                  "datasetName": "ds_returns",
+                  "fields": [
+                    {
+                      "name": "region",
+                      "expression": "`region`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_region_ds_expiry",
+                "query": {
+                  "datasetName": "ds_expiry",
+                  "fields": [
+                    {
+                      "name": "region",
+                      "expression": "`region`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_region_ds_queue",
+                "query": {
+                  "datasetName": "ds_queue",
+                  "fields": [
+                    {
+                      "name": "region",
+                      "expression": "`region`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "region",
+                    "displayName": "Region",
+                    "queryName": "f_region_ds_metrics"
+                  },
+                  {
+                    "fieldName": "region",
+                    "displayName": "Region",
+                    "queryName": "f_region_ds_exposure"
+                  },
+                  {
+                    "fieldName": "region",
+                    "displayName": "Region",
+                    "queryName": "f_region_ds_monthly"
+                  },
+                  {
+                    "fieldName": "region",
+                    "displayName": "Region",
+                    "queryName": "f_region_ds_returns"
+                  },
+                  {
+                    "fieldName": "region",
+                    "displayName": "Region",
+                    "queryName": "f_region_ds_expiry"
+                  },
+                  {
+                    "fieldName": "region",
+                    "displayName": "Region",
+                    "queryName": "f_region_ds_queue"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Region"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "f_customer",
+            "queries": [
+              {
+                "name": "f_customer_ds_metrics",
+                "query": {
+                  "datasetName": "ds_metrics",
+                  "fields": [
+                    {
+                      "name": "customer_name",
+                      "expression": "`customer_name`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_customer_ds_exposure",
+                "query": {
+                  "datasetName": "ds_exposure",
+                  "fields": [
+                    {
+                      "name": "customer_name",
+                      "expression": "`customer_name`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_customer_ds_monthly",
+                "query": {
+                  "datasetName": "ds_monthly",
+                  "fields": [
+                    {
+                      "name": "customer_name",
+                      "expression": "`customer_name`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_customer_ds_returns",
+                "query": {
+                  "datasetName": "ds_returns",
+                  "fields": [
+                    {
+                      "name": "customer_name",
+                      "expression": "`customer_name`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_customer_ds_expiry",
+                "query": {
+                  "datasetName": "ds_expiry",
+                  "fields": [
+                    {
+                      "name": "customer_name",
+                      "expression": "`customer_name`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_customer_ds_queue",
+                "query": {
+                  "datasetName": "ds_queue",
+                  "fields": [
+                    {
+                      "name": "customer_name",
+                      "expression": "`customer_name`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "customer_name",
+                    "displayName": "Customer",
+                    "queryName": "f_customer_ds_metrics"
+                  },
+                  {
+                    "fieldName": "customer_name",
+                    "displayName": "Customer",
+                    "queryName": "f_customer_ds_exposure"
+                  },
+                  {
+                    "fieldName": "customer_name",
+                    "displayName": "Customer",
+                    "queryName": "f_customer_ds_monthly"
+                  },
+                  {
+                    "fieldName": "customer_name",
+                    "displayName": "Customer",
+                    "queryName": "f_customer_ds_returns"
+                  },
+                  {
+                    "fieldName": "customer_name",
+                    "displayName": "Customer",
+                    "queryName": "f_customer_ds_expiry"
+                  },
+                  {
+                    "fieldName": "customer_name",
+                    "displayName": "Customer",
+                    "queryName": "f_customer_ds_queue"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Customer"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "f_category",
+            "queries": [
+              {
+                "name": "f_category_ds_metrics",
+                "query": {
+                  "datasetName": "ds_metrics",
+                  "fields": [
+                    {
+                      "name": "product_category",
+                      "expression": "`product_category`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_category_ds_exposure",
+                "query": {
+                  "datasetName": "ds_exposure",
+                  "fields": [
+                    {
+                      "name": "product_category",
+                      "expression": "`product_category`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_category_ds_monthly",
+                "query": {
+                  "datasetName": "ds_monthly",
+                  "fields": [
+                    {
+                      "name": "product_category",
+                      "expression": "`product_category`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_category_ds_returns",
+                "query": {
+                  "datasetName": "ds_returns",
+                  "fields": [
+                    {
+                      "name": "product_category",
+                      "expression": "`product_category`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_category_ds_expiry",
+                "query": {
+                  "datasetName": "ds_expiry",
+                  "fields": [
+                    {
+                      "name": "product_category",
+                      "expression": "`product_category`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_category_ds_queue",
+                "query": {
+                  "datasetName": "ds_queue",
+                  "fields": [
+                    {
+                      "name": "product_category",
+                      "expression": "`product_category`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "product_category",
+                    "displayName": "Product category",
+                    "queryName": "f_category_ds_metrics"
+                  },
+                  {
+                    "fieldName": "product_category",
+                    "displayName": "Product category",
+                    "queryName": "f_category_ds_exposure"
+                  },
+                  {
+                    "fieldName": "product_category",
+                    "displayName": "Product category",
+                    "queryName": "f_category_ds_monthly"
+                  },
+                  {
+                    "fieldName": "product_category",
+                    "displayName": "Product category",
+                    "queryName": "f_category_ds_returns"
+                  },
+                  {
+                    "fieldName": "product_category",
+                    "displayName": "Product category",
+                    "queryName": "f_category_ds_expiry"
+                  },
+                  {
+                    "fieldName": "product_category",
+                    "displayName": "Product category",
+                    "queryName": "f_category_ds_queue"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Product category"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "f_product",
+            "queries": [
+              {
+                "name": "f_product_ds_metrics",
+                "query": {
+                  "datasetName": "ds_metrics",
+                  "fields": [
+                    {
+                      "name": "product_name",
+                      "expression": "`product_name`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_product_ds_exposure",
+                "query": {
+                  "datasetName": "ds_exposure",
+                  "fields": [
+                    {
+                      "name": "product_name",
+                      "expression": "`product_name`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_product_ds_monthly",
+                "query": {
+                  "datasetName": "ds_monthly",
+                  "fields": [
+                    {
+                      "name": "product_name",
+                      "expression": "`product_name`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_product_ds_returns",
+                "query": {
+                  "datasetName": "ds_returns",
+                  "fields": [
+                    {
+                      "name": "product_name",
+                      "expression": "`product_name`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_product_ds_expiry",
+                "query": {
+                  "datasetName": "ds_expiry",
+                  "fields": [
+                    {
+                      "name": "product_name",
+                      "expression": "`product_name`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_product_ds_queue",
+                "query": {
+                  "datasetName": "ds_queue",
+                  "fields": [
+                    {
+                      "name": "product_name",
+                      "expression": "`product_name`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "product_name",
+                    "displayName": "Product",
+                    "queryName": "f_product_ds_metrics"
+                  },
+                  {
+                    "fieldName": "product_name",
+                    "displayName": "Product",
+                    "queryName": "f_product_ds_exposure"
+                  },
+                  {
+                    "fieldName": "product_name",
+                    "displayName": "Product",
+                    "queryName": "f_product_ds_monthly"
+                  },
+                  {
+                    "fieldName": "product_name",
+                    "displayName": "Product",
+                    "queryName": "f_product_ds_returns"
+                  },
+                  {
+                    "fieldName": "product_name",
+                    "displayName": "Product",
+                    "queryName": "f_product_ds_expiry"
+                  },
+                  {
+                    "fieldName": "product_name",
+                    "displayName": "Product",
+                    "queryName": "f_product_ds_queue"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Product"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 6,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "f_month",
+            "queries": [
+              {
+                "name": "f_month_ds_monthly",
+                "query": {
+                  "datasetName": "ds_monthly",
+                  "fields": [
+                    {
+                      "name": "month",
+                      "expression": "`month`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-date-range-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "month",
+                    "displayName": "Month (consumption vs shipments)",
+                    "queryName": "f_month_ds_monthly"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Month (consumption vs shipments)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 8,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "f_return_month",
+            "queries": [
+              {
+                "name": "f_return_month_ds_returns",
+                "query": {
+                  "datasetName": "ds_returns",
+                  "fields": [
+                    {
+                      "name": "return_month",
+                      "expression": "`return_month`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-date-range-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "return_month",
+                    "displayName": "Return month",
+                    "queryName": "f_return_month_ds_returns"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Return month"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 10,
+            "width": 2,
+            "height": 2
+          }
+        }
+      ]
+    }
+  ]
+}

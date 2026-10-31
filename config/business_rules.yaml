@@ -1,0 +1,36 @@
+# Replenishment decision engine — configurable business constraints (SIMULATED POLICY METADATA)
+#
+# These thresholds are illustrative demo settings, not FFF/RNI policy and not clinical guidance.
+# The engine is decision support: every consequential change is routed to a human reviewer.
+
+engine_version: "1.0.0"
+
+coverage:
+  review_period_days: 7          # days until the next scheduled replenishment review
+  use_forecast_bound: upper      # size the demand target on the upper bound of the forecast interval
+  forecast_horizon_days: 30      # forecast horizon used to derive the daily demand rate
+
+excess_detection:
+  ratio_threshold: 2.0           # request > 2x the engine recommendation ...
+  abs_threshold_units: 10        # ... and more than 10 units above it
+  max_cover_days: 180            # request would leave > 180 days of forecast demand on hand
+
+expiry:
+  near_expiry_days: 90           # lots expiring within 90 days are "approaching expiration"
+  expiry_risk_value_threshold: 10000   # projected unused expiring value that triggers EXPIRY_RISK
+  expiry_risk_share_threshold: 0.25    # ... or share of on-hand projected to expire unused
+
+stockout:
+  # request leaves effective inventory below expected demand over the coverage window
+  min_cover_ratio: 1.0
+
+review:
+  high_exposure_value_threshold: 25000   # $ exposure that always requires human review
+  high_returns_count_12m: 4              # returns history that is called out as a risk factor
+  high_returns_cost_12m: 1500.0
+  critical_products_always_review: true
+
+disclaimer: >-
+  Decision support only. Quantities are calculated from synthetic data and simulated business rules; they are
+  not clinical recommendations. Emergency and critical-stock levels are governed by approved stocking policy and
+  require human review.

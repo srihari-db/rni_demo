@@ -1,0 +1,74 @@
+[
+  {
+    "question": "Which customers have the highest excess inventory exposure?",
+    "genie_answered": true,
+    "rows": 10,
+    "matches_verified_sql": true,
+    "elapsed_s": 14.8,
+    "genie_sql": "SELECT\n  `customer_name`,\n  `region`,\n  ROUND(SUM(`potential_excess_exposure_value`), 0) AS `potential_excess_exposure_usd`,\n  ROUND(SUM(`potential_excess_value`), 0) AS `excess_on_hand_usd`,\n  ROUND(SUM(`pending_request_exposure_value`), 0) AS `pending_request_exposure_usd`\nFROM `rni_demo`.`gold`.`inventory_value_metrics`\nWHERE `customer_name` IS NOT NULL\n  AND `region` IS NOT NULL\n  AND `potential_excess_exposure_value` IS NOT NULL\nGROUP BY `customer_name`, `region`\nORDER BY `potential_excess_exposure_usd` DESC\nLIMIT 10",
+    "error": null
+  },
+  {
+    "question": "Which products have the highest return rates?",
+    "genie_answered": true,
+    "rows": 10,
+    "matches_verified_sql": true,
+    "elapsed_s": 19.9,
+    "genie_sql": "WITH product_returns AS (\n  SELECT\n    `product_name`,\n    `product_category`,\n    SUM(`returned_qty`) AS `returned_units`,\n    SUM(`shipped_qty`) AS `shipped_units`,\n    100 * (try_divide(SUM(`returned_qty`),NULLIF(SUM(`shipped_qty`), 0))) AS `return_rate`\n  FROM `rni_demo`.`gold`.`consumption_vs_shipments_monthly`\n  WHERE `month` > ADD_MONTHS((SELECT `as_of_date` FROM `rni_demo`.`gold`.`kpi_executive`), -12)\n    AND `product_name` IS NOT NULL\n    AND `product_category` IS NOT NULL\n  GROUP BY `product_name`, `product_category`\n  HAVING SUM(`shipped_qty`) > 0\n), ranked_products AS (\n  SELECT\n    `product_name`,\n    `product_category`,\n    `returned_units`,\n    `shipped_units`,\n    `return_rate`,\n    RANK() OVER (ORDER BY `return_rate` DESC) AS `return_rank`\n  FROM product_returns\n)\nSELECT\n  `product_name`,\n  `product_category`,\n  `returned_units`,\n  `shipped_units`,\n  `return_rate`\nFROM ranked_products\nWHERE `return_rank` <= 10\nORDER BY `return_rate` DESC, `product_name` ASC",
+    "error": null
+  },
+  {
+    "question": "Why was Hospital A's shipment request flagged?",
+    "genie_answered": true,
+    "rows": 1,
+    "matches_verified_sql": true,
+    "elapsed_s": 15.0,
+    "genie_sql": "SELECT `customer_name`, `product_name`, `requested_qty`, `recommended_qty`, `par_only_baseline_qty`, `on_hand_qty`, `par_level`, `mandatory_minimum`, `consumed_last_120d`, ROUND(`forecast_30d_qty`, 2) AS `forecast_30d_qty`, `risk_category`, ROUND(`potential_exposure_value`, 0) AS `potential_exposure_usd`, `review_reason` FROM `rni_demo`.`gold`.`shipment_review_queue` WHERE `customer_id` = 'CUST-001'",
+    "error": null
+  },
+  {
+    "question": "Which products may expire in the next 60 days?",
+    "genie_answered": true,
+    "rows": 6,
+    "matches_verified_sql": true,
+    "elapsed_s": 15.1,
+    "genie_sql": "SELECT `customer_name`, `product_name`, `lot_id`, `expiry_date`, `days_to_expiry`, `on_hand_qty`, ROUND(`inventory_value`, 0) AS `inventory_value_usd`\nFROM `rni_demo`.`gold`.`inventory_lots_current`\nWHERE `days_to_expiry` IS NOT NULL\n  AND `inventory_value` IS NOT NULL\n  AND `days_to_expiry` <= 60\nORDER BY `inventory_value` DESC",
+    "error": null
+  },
+  {
+    "question": "Which customers have the highest shipments relative to usage?",
+    "genie_answered": true,
+    "rows": 10,
+    "matches_verified_sql": true,
+    "elapsed_s": 19.9,
+    "genie_sql": "SELECT\n  `customer_name`,\n  `region`,\n  SUM(`shipped_qty`) AS `shipped_units`,\n  SUM(`consumed_qty`) AS `consumed_units`,\n  ROUND(SUM(`shipped_value`), 0) AS `shipped_value_usd`,\n  ROUND(SUM(`consumed_value`), 0) AS `consumed_value_usd`,\n  ROUND(try_divide(SUM(`shipped_value`),NULLIF(SUM(`consumed_value`), 0)), 2) AS `shipped_to_consumed_value_ratio`\nFROM `rni_demo`.`gold`.`consumption_vs_shipments_monthly`\nWHERE `month` > ADD_MONTHS((SELECT `as_of_date` FROM `rni_demo`.`gold`.`kpi_executive`), -12)\n  AND `customer_name` IS NOT NULL\n  AND `region` IS NOT NULL\nGROUP BY `customer_name`, `region`\nORDER BY `shipped_to_consumed_value_ratio` DESC\nLIMIT 10",
+    "error": null
+  },
+  {
+    "question": "How much was returned during the last 12 months?",
+    "genie_answered": true,
+    "rows": 1,
+    "matches_verified_sql": true,
+    "elapsed_s": 15.3,
+    "genie_sql": "SELECT COUNT(*) AS `returns`, SUM(`returned_qty`) AS `returned_units`, ROUND(SUM(`returned_value`), 0) AS `returned_value_usd`, ROUND(SUM(`return_logistics_cost`), 0) AS `return_logistics_cost_usd` FROM `rni_demo`.`gold`.`returns_detail` WHERE `in_last_12_months` = true",
+    "error": null
+  },
+  {
+    "question": "Which shipment requests need review and what is the potential exposure?",
+    "genie_answered": true,
+    "rows": 24,
+    "matches_verified_sql": true,
+    "elapsed_s": 14.9,
+    "genie_sql": "SELECT `review_priority`, `customer_name`, `product_name`, `requested_qty`, `recommended_qty`, `risk_category`, ROUND(`potential_exposure_value`, 0) AS `potential_exposure_usd`, `review_reason`\nFROM `rni_demo`.`gold`.`shipment_review_queue`\nWHERE `human_review_required` = TRUE\n  AND `review_priority` IS NOT NULL\nORDER BY `review_priority`",
+    "error": null
+  },
+  {
+    "question": "What is our total inventory deployed and how much is approaching expiration?",
+    "genie_answered": true,
+    "rows": 1,
+    "matches_verified_sql": true,
+    "elapsed_s": 14.7,
+    "genie_sql": "SELECT ROUND(`total_inventory_deployed_value`, 0) AS `total_inventory_deployed_usd`, ROUND(`inventory_approaching_expiration_value`, 0) AS `approaching_expiration_usd`, ROUND(`potential_excess_exposure_value`, 0) AS `potential_excess_exposure_usd`, `as_of_date` FROM `rni_demo`.`gold`.`kpi_executive`",
+    "error": null
+  }
+]

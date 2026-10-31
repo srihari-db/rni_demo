@@ -1,0 +1,155 @@
+# RNI Intelligent Operations Command Center — synthetic simulation + executive scenarios
+#
+# ALL DATA IS SYNTHETIC. Customers, products, quantities and dollar values are fictional and exist only
+# to demonstrate analytics patterns. Nothing here is clinical guidance or an FFF/RNI business policy.
+#
+# Day offsets are relative to the snapshot date (0 = snapshot day, -1 = day before, ...).
+
+simulation:
+  seed: 20261030               # fixed seed -> byte-identical regeneration
+  start_date: "2024-11-01"     # 24 months of history
+  snapshot_date: "2026-10-30"  # "today" for the demo; inventory positions are as of end of this day
+  review_period_days: 7        # customers review RNI stock weekly (simulated manual Excel process)
+  pending_review_window_days: 2  # requests raised in the last N days are still PENDING_REVIEW
+  telemetry_days: 30
+  telemetry_interval_minutes: 15
+
+scenarios:
+  # ---------------------------------------------------------------------------------------------
+  - scenario_id: SCN-01
+    name: "Excessive shipment request"
+    scenario_type: EXCESSIVE_SHIPMENT
+    customer_id: CUST-001        # Hospital A
+    sku: SKU-1001                # Product A
+    narrative: >-
+      Hospital A requested 500 doses of Product A even though it consumed only 1 dose over the last four months.
+      It holds 25 doses against a PAR of 60 and a mandatory minimum of 40. A simple PAR-only top-up would be
+      35 doses; the decision engine applies the full set of configured constraints and flags the request for
+      human review.
+    policy: {par_level: 60, mandatory_minimum: 40, lead_time_days: 3}
+    product_overrides: {unit_cost: 900.0}
+    pre_window_demand: {profile: EMERGENCY, event_probability: 0.02, mean_event_size: 1.6}
+    window:
+      days: 120                  # "four months"
+      consumption: {mode: scripted, events: [{day_offset: -63, qty: 1}]}
+    target_state: {on_hand_qty: 25}
+    open_request: {requested_qty: 500, day_offset: -1}
+    expectations:
+      historical_consumption_window_qty: 1
+      current_inventory: 25
+      par_only_baseline_qty: 35
+      unit_inventory_value: 900.0
+      risk_category: EXCESSIVE_REQUEST
+      human_review_required: true
+
+  # ---------------------------------------------------------------------------------------------
+  - scenario_id: SCN-02
+    name: "Expiration risk on short-dated lot"
+    scenario_type: EXPIRATION_RISK
+    customer_id: CUST-002        # Lakeshore Children's Hospital
+    sku: SKU-1017                # Oncomab 400 mg
+    narrative: >-
+      Lakeshore Children's Hospital holds 22 vials of a high-value biologic; 14 of them are in a lot that
+      expires in 38 days, while the site uses about 3–4 vials a month. Most of that lot is projected to expire unused; even a small top-up request
+      would add exposure without improving availability.
+    policy: {par_level: 16, mandatory_minimum: 6, lead_time_days: 2}
+    pre_window_demand: {profile: REGULAR, daily_rate: 0.12}
+    window:
+      days: 30
+      reset_existing_stock: true   # rotate older stock out (recorded as returns) before the anchor shipment
+      anchor_shipments:
+        - {qty: 18, lot_expiry_days_after_snapshot: 38}
+        - {qty: auto}
+      consumption: {mode: scripted, events: [{day_offset: -26, qty: 1}, {day_offset: -19, qty: 1}, {day_offset: -11, qty: 1}, {day_offset: -4, qty: 1}]}
+    target_state: {on_hand_qty: 22}
+    open_request: {requested_qty: 2, day_offset: -1}
+    expectations:
+      current_inventory: 22
+      short_dated_qty: 14
+      risk_category: EXPIRY_RISK
+      human_review_required: true
+
+  # ---------------------------------------------------------------------------------------------
+  - scenario_id: SCN-03
+    name: "Stockout risk – under-sized request"
+    scenario_type: STOCKOUT_RISK
+    customer_id: CUST-003        # Harbor Point Infusion Center
+    sku: SKU-1002                # Corvanta IVIG 10% 10 g
+    narrative: >-
+      Harbor Point Infusion Center uses roughly three IVIG units a day but holds only 6 on hand. A request of 10
+      would leave the site short before the next replenishment cycle.
+    policy: {par_level: 90, mandatory_minimum: 30, lead_time_days: 2}
+    pre_window_demand: {profile: REGULAR, daily_rate: 3.4}
+    window:
+      days: 10
+      consumption: {mode: profile}
+    target_state: {on_hand_qty: 6}
+    open_request: {requested_qty: 10, day_offset: -1}
+    expectations:
+      current_inventory: 6
+      risk_category: STOCKOUT_RISK
+      human_review_required: true
+
+  # ---------------------------------------------------------------------------------------------
+  - scenario_id: SCN-04
+    name: "Intermittent critical demand (emergency product)"
+    scenario_type: INTERMITTENT_CRITICAL_DEMAND
+    customer_id: CUST-004        # Mesa Verde Community Hospital
+    sku: SKU-1006                # Crotivane Antivenom
+    narrative: >-
+      Mesa Verde Community Hospital used 7 vials of antivenom in a single event about five and a half months
+      ago and none since. A forecast based on recent history is close to zero, but this is a critical
+      emergency product: the approved mandatory minimum must hold and any change requires human review.
+    policy: {par_level: 12, mandatory_minimum: 8, lead_time_days: 3}
+    pre_window_demand: {profile: EMERGENCY, event_probability: 0.006, mean_event_size: 4.0}
+    window:
+      days: 170
+      consumption: {mode: scripted, events: [{day_offset: -168, qty: 7}]}
+    target_state: {on_hand_qty: 6}
+    open_request: {requested_qty: 4, day_offset: -1}
+    expectations:
+      current_inventory: 6
+      risk_category: CRITICAL_POLICY_HOLD
+      recommended_qty_at_least_to_restore_minimum: true
+      human_review_required: true
+
+  # ---------------------------------------------------------------------------------------------
+  - scenario_id: SCN-05
+    name: "High returns cost (cold-chain)"
+    scenario_type: HIGH_RETURNS_COST
+    customer_id: CUST-005        # Summit Hematology & Oncology Associates
+    sku: SKU-1021                # Hemofix Factor VIII 2,000 IU
+    narrative: >-
+      Summit Hematology & Oncology repeatedly over-orders a refrigerated factor concentrate and later returns
+      it, paying qualified cold-chain shipping each time. A new request for 90 units would repeat the pattern.
+    policy: {par_level: 30, mandatory_minimum: 10, lead_time_days: 2}
+    pre_window_demand: {profile: REGULAR, daily_rate: 0.6}
+    behavior_overrides: {p_excess: 0.45, return_propensity: 1.0}
+    window:
+      days: 20
+      consumption: {mode: profile}
+    target_state: {on_hand_qty: 34}
+    open_request: {requested_qty: 90, day_offset: -1}
+    expectations:
+      current_inventory: 34
+      min_returns_last_12m: 4
+      risk_category: EXCESSIVE_REQUEST
+      human_review_required: true
+
+  # ---------------------------------------------------------------------------------------------
+  - scenario_id: SCN-06
+    name: "Ambiguous return (optional reconciliation demo)"
+    scenario_type: AMBIGUOUS_RETURN
+    optional: true
+    customer_id: CUST-015        # Liberty Bell University Hospital
+    sku: SKU-1018                # Denoxa 120 mg
+    narrative: >-
+      Two shipments delivered the same lot to Liberty Bell University Hospital two weeks apart, and part of that
+      lot was later returned. Because RNI has no direct order-to-return traceability today, the return cannot be
+      attributed to a single order; it is labeled AMBIGUOUS for a future reconciliation demo.
+    scripted_events:
+      - {day_offset: -150, type: SHIPMENT, qty: 6, lot: LATEST_RELEASED}
+      - {day_offset: -136, type: SHIPMENT, qty: 6, lot: SAME_AS_LAST_SHIPMENT}
+      - {day_offset: -90,  type: RETURN,   qty: 4, lot: SAME_AS_LAST_SHIPMENT, reason: EXCESS_STOCK}
+    expectations:
+      return_link_type: AMBIGUOUS

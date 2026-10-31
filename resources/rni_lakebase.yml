@@ -1,0 +1,10 @@
+resources:
+  postgres_projects:
+    rni_ops_cases:
+      project_id: ${var.lakebase_project}
+      display_name: RNI Command Center – operations cases
+      pg_version: 17
+      default_endpoint_settings:
+        autoscaling_limit_min_cu: 0.5
+        autoscaling_limit_max_cu: 1
+        suspend_timeout_duration: 600s     # scale to zero when idle (demo cost control)

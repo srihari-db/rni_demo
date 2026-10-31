@@ -1,0 +1,43 @@
+# RNI Intelligent Operations Command Center — Declarative Automation (Asset) Bundle
+# Targets: dev (default, per-user prefixed) and demo. Never targets production RNI resources.
+bundle:
+  name: rni_command_center
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    description: Unity Catalog catalog for all RNI demo assets
+    default: rni_demo
+  warehouse_id:
+    description: SQL warehouse used by the dashboard, Genie and the App (discovered during setup; never hardcoded in code)
+  llm_endpoint:
+    description: Foundation Model serving endpoint used only for narrative case summaries
+    default: databricks-claude-sonnet-4-5
+  genie_space_id:
+    description: Genie space id for the RNI Inventory Intelligence Agent (written by scripts/setup_genie.py)
+    default: ""
+  lakebase_project:
+    description: Lakebase Autoscaling project id for transactional app state
+    default: rni-ops-cases
+
+sync:
+  exclude:
+    - .venv
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      profile: DEFAULT
+  demo:
+    mode: production
+    workspace:
+      profile: DEFAULT
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/demo
+    presets:
+      name_prefix: "[demo] "
+    run_as:
+      user_name: ${workspace.current_user.userName}

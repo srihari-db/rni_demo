@@ -1,0 +1,57 @@
+resources:
+  jobs:
+    rni_data_pipeline:
+      name: rni-command-center-data-pipeline
+      description: >-
+        Synthetic RNI data -> Unity Catalog (bronze/silver) -> forecasting (MLflow) -> decision engine ->
+        gold views/KPIs -> data-integrity tests. Serverless; runs on demand (no schedule) to avoid continuous cost.
+      max_concurrent_runs: 1
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+      environments:
+        - environment_key: rni
+          spec:
+            environment_version: "3"
+            dependencies:
+              - pyyaml>=6
+              - mlflow>=2.22
+              - pytest>=8
+              - streamlit==1.45.1
+              - plotly>=5.22
+      tasks:
+        - task_key: generate_data
+          environment_key: rni
+          spark_python_task:
+            python_file: ../scripts/generate_rni_data.py
+            parameters: ["--catalog", "{{job.parameters.catalog}}", "--root", "${workspace.file_path}"]
+        - task_key: load_unity_catalog
+          depends_on: [{task_key: generate_data}]
+          environment_key: rni
+          spark_python_task:
+            python_file: ../scripts/load_rni_data.py
+            parameters: ["--catalog", "{{job.parameters.catalog}}", "--root", "${workspace.file_path}"]
+        - task_key: demand_forecasting
+          depends_on: [{task_key: load_unity_catalog}]
+          environment_key: rni
+          spark_python_task:
+            python_file: ../scripts/run_forecasting.py
+            parameters: ["--catalog", "{{job.parameters.catalog}}", "--root", "${workspace.file_path}"]
+        - task_key: decision_engine
+          depends_on: [{task_key: demand_forecasting}]
+          environment_key: rni
+          spark_python_task:
+            python_file: ../scripts/run_recommendations.py
+            parameters: ["--catalog", "{{job.parameters.catalog}}", "--root", "${workspace.file_path}"]
+        - task_key: build_gold
+          depends_on: [{task_key: decision_engine}]
+          environment_key: rni
+          spark_python_task:
+            python_file: ../scripts/build_gold.py
+            parameters: ["--catalog", "{{job.parameters.catalog}}", "--root", "${workspace.file_path}"]
+        - task_key: data_integrity_tests
+          depends_on: [{task_key: build_gold}]
+          environment_key: rni
+          spark_python_task:
+            python_file: ../scripts/run_tests.py
+            parameters: ["--catalog", "{{job.parameters.catalog}}", "--root", "${workspace.file_path}"]

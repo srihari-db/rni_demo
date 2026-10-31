@@ -1,0 +1,15 @@
+# Databricks App runtime config (source root = bundle root so the app can import src/ and config/)
+command: ["streamlit", "run", "app/app.py"]
+env:
+  - name: DATABRICKS_WAREHOUSE_ID
+    valueFrom: sql-warehouse
+  - name: SERVING_ENDPOINT_NAME
+    valueFrom: serving-endpoint
+  - name: GENIE_SPACE_ID
+    valueFrom: genie-space
+  - name: RNI_CATALOG
+    value: rni_demo
+  - name: LAKEBASE_ENDPOINT
+    value: projects/rni-ops-cases/branches/production/endpoints/primary
+  - name: STREAMLIT_BROWSER_GATHER_USAGE_STATS
+    value: "false"

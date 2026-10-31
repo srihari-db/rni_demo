@@ -95,6 +95,10 @@ def wow(text):
     callout("WOW MOMENT:", text, "FDF1E6", RGBColor(0xC2, 0x5E, 0x00))
 
 
+def tech(text):
+    callout("UNDER THE HOOD:", text, "EAF0FB", RGBColor(0x1F, 0x4E, 0x9A))
+
+
 def table(header, rows, widths=None, head_fill="0B2A4A"):
     t = doc.add_table(rows=1, cols=len(header))
     t.style = "Table Grid"
@@ -189,6 +193,8 @@ say("$1.4 million of potential excess is sitting in, or about to be sent to, cus
     "piece of it comes from.")
 
 # ---- Act 1
+tech("Databricks AI/BI Dashboard on a serverless SQL warehouse, reading Gold views in Unity Catalog (rni_demo.gold). The KPIs are SQL definitions in the Gold layer, so the dashboard, the App and Genie share one version of each number. Global filters drive every tile. [Analytics, not AI/ML.]")
+
 h("Act 1 · Inventory Command Center (3 min): “The morning alert”", 2)
 rich([("Open: ", True), ("App → Inventory Command Center.", False)])
 bullets([
@@ -204,6 +210,8 @@ wow("The system found the problem before anyone opened a spreadsheet: the alert,
 rich([("Click: ", True), ("“Open in Intelligent Shipment Advisor →”.", False)])
 
 # ---- Act 2
+tech("Databricks App (Streamlit) running as its own service principal with read-only SELECT on the Gold schema. It queries the serverless SQL warehouse through a fixed allow-list of Gold views (no free-form SQL). The red alert and review queue come from gold.shipment_review_queue, written by the decision engine in the Lakeflow job. [Rules engine output surfaced by an App.]")
+
 h("Act 2 · Intelligent Shipment Advisor (6 min): “Why 15, not 500, and not 35”", 2)
 para("This is the centerpiece. Slow down here.", italic=True, color=GREY)
 bullets([
@@ -244,6 +252,8 @@ wow("Five sites, five different answers (more, less, hold the floor, rebalance, 
 rich([("Switch back to Hospital A · Product A before moving on.", True)])
 
 # ---- Act 3
+tech("ML + deterministic engine. The forecast is MACHINE LEARNING: a Lakeflow (serverless) job classifies every site/product series, backtests six models, picks the best per demand class, tracks every run in MLflow and registers the model in Unity Catalog (rni_demo.ml.rni_demand_forecaster). The quantity (15) is NOT AI: it comes from a deterministic Python decision engine with unit tests; the App reruns it live for the what-ifs, so the answer is reproducible and auditable.")
+
 h("Act 3 · Ask RNI AI (4 min): “Ask it in plain English”", 2)
 rich([("Open: ", True), ("App → Ask RNI AI. Click three of the suggested questions:", False)])
 bullets([
@@ -263,6 +273,8 @@ para("Expect 15–20 seconds per answer. If Genie is slow, the App switches to v
      "fallback — not a Genie response”. Say so out loud; never present it as Genie.", italic=True, color=GREY)
 
 # ---- Act 4
+tech("GENERATIVE AI (BI). AI/BI Genie space “RNI Inventory Intelligence Agent” turns English into SQL over 12 curated Gold tables, guided by business definitions, example SQL and benchmark questions (all 8 benchmarks matched verified SQL). The App calls Genie through the Conversation API and badges every answer as live Genie or curated fallback. Unity Catalog permissions apply to every query.")
+
 h("Act 4 · AI Operations Cases (4 min): “From insight to a signed-off decision”", 2)
 rich([("Do: ", True), ("Back in the Advisor (Hospital A), click “Create investigation case →”. The case opens in "
                        "AI Operations Cases.", False)])
@@ -280,6 +292,8 @@ wow("The loop closes on screen: alert → explanation → AI-drafted case → hu
     "Pending → Needs more info → Pending → Approved, all logged.")
 
 # ---- Act 5
+tech("GENERATIVE AI + LAKEBASE. The case narrative is written by an LLM on Databricks Model Serving (Foundation Model API endpoint databricks-claude-sonnet-4-5). It receives facts gathered by fixed, governed queries and the engine's output, and returns text only — it cannot set quantities. Cases, reviews, overrides and the AI activity log are written to LAKEBASE (managed Postgres) because this is transactional app state: millisecond reads/writes, row updates and status changes that a warehouse is not designed for.")
+
 h("Act 5 · Business Value Simulator (3 min): “What is this worth to us?”", 2)
 rich([("Open: ", True), ("App → Business Value Simulator.", False)])
 bullets([
@@ -299,6 +313,8 @@ wow("Credibility, not hype: the simulator separates released inventory, cost avo
     "cash savings it can't prove.")
 
 # ---- Act 6
+tech("Pure Python business logic in the App, fed by Gold KPIs from the SQL warehouse. Deliberately not AI: every figure traces to a formula and a slider. [Analytics.]")
+
 h("Act 6 · Connected Device Intelligence (2 min): “What's next”", 2)
 rich([("Open: ", True), ("App → Connected Device Intelligence. Select RNI-DEV-0701 (Pinecrest, HIGH priority).", False)])
 bullets([
@@ -311,6 +327,8 @@ wow("The RNI cabinet stops being a box of stock and becomes a sensor: inventory,
     "platform.")
 
 # ---- Close
+tech("Today: synthetic telemetry (15-minute readings) is generated and scored in the Lakeflow job with a statistical anomaly detector, landing in gold.device_health. Tomorrow (not built in this demo): ZEROBUS INGEST streams device events from the cabinets / ClearBlade straight into Unity Catalog Delta tables over gRPC, with no Kafka or message bus to run, and the same scoring and case workflow pick them up in near real time.")
+
 h("Close (1 min)", 2)
 say("One request, one morning: we saw the alert, understood why 15 was right and 500 and 35 were wrong, saw the same "
     "engine make five different calls for five different sites, asked questions in English, closed the loop with a "
@@ -366,7 +384,124 @@ table(["Question", "Answer"], [
 ], widths=[2.0, 4.6])
 
 # ================================================================================================ prep
-h("6. Presenter checklist")
+# ================================================================================================ technical
+h("6. Under the hood: how each capability maps to Databricks")
+para("Use this section when the audience asks “how does it work?” or for a technical follow-up. The one-line rule: "
+     "ML forecasts demand, rules decide quantities, generative AI explains and answers questions, and humans approve.",
+     italic=True, color=GREY)
+
+h("6.1 Where we use AI, ML and plain rules", 2)
+table(["Capability", "Type", "Databricks feature", "Why this choice", "Guardrail"], [
+    ["Demand forecast (30/60/90 days, 80% range)", "Machine learning (statistical time-series)",
+     "Lakeflow Jobs (serverless) · MLflow experiment tracking · model registered in Unity Catalog",
+     "Six models compared on rolling backtests; best per demand pattern (seasonal for steady demand, TSB for sparse "
+     "demand)", "Leakage test; intervals calibrated; forecast can never pull stock below the minimum"],
+    ["Recommended quantity (e.g. 15)", "Deterministic rules engine (not AI)", "Python engine run in the Lakeflow job; "
+     "re-run live in the Databricks App for what-ifs", "Quantities must be exact, explainable and repeatable",
+     "Unit tested; same inputs → same answer; every step written to the explanation"],
+    ["Risk flags (excessive, stockout, expiry, critical hold)", "Rules on top of ML output", "Same engine; results "
+     "in Gold tables in Unity Catalog", "Business thresholds are policy, set in config", "Thresholds visible and "
+     "versioned in Git"],
+    ["Ask RNI AI", "Generative AI (text-to-SQL)", "AI/BI Genie space + Genie Conversation API",
+     "Business users ask in English; answers stay on governed data", "Only 12 curated Gold tables; read-only; SQL "
+     "shown; benchmarked; labelled fallback"],
+    ["Case summary & next action", "Generative AI (LLM narrative)", "Model Serving · Foundation Model API "
+     "(databricks-claude-sonnet-4-5)", "Saves planners the write-up", "Facts come from fixed queries; LLM returns "
+     "text only; cannot change quantities or call SAP; template fallback"],
+    ["Device anomaly score", "Statistical anomaly detection", "Lakeflow job → Gold table device_health",
+     "Spot sustained drift, not one-off spikes", "Positioned as “inspect”, not “will fail”"],
+    ["Business value", "Formulas", "Databricks App (Python)", "Finance needs traceable numbers", "Cash savings "
+     "never claimed"],
+], widths=[1.3, 1.05, 1.6, 1.4, 1.35])
+
+h("6.2 Databricks features behind each tab", 2)
+table(["Tab / step", "Databricks features in play"], [
+    ["Executive dashboard", "AI/BI Dashboards · serverless SQL warehouse · Unity Catalog Gold views"],
+    ["Inventory Command Center", "Databricks Apps (Streamlit, own service principal) · SQL warehouse · Unity Catalog "
+     "least-privilege grants (SELECT on Gold only)"],
+    ["Intelligent Shipment Advisor", "Decision engine output from Lakeflow Jobs · forecasts from the MLflow-tracked "
+     "pipeline · live engine re-run inside the App"],
+    ["Ask RNI AI", "AI/BI Genie (space with instructions, example SQL, benchmarks) · Genie Conversation API"],
+    ["AI Operations Cases", "Model Serving (Foundation Model API) for the narrative · Lakebase Postgres for case "
+     "state and audit trail"],
+    ["Business Value Simulator", "Databricks Apps · Gold KPI table"],
+    ["Connected Device Intelligence", "Lakeflow job scoring · Gold device tables · (roadmap) Zerobus Ingest"],
+    ["Behind all tabs", "Unity Catalog (governance, lineage, PK/CHECK constraints, volume for landing files) · "
+     "Declarative Automation Bundles (one command deploys job, App and Lakebase to dev or demo) · Git"],
+], widths=[1.9, 4.7])
+
+h("6.3 End-to-end flow", 2)
+bullets([
+    ("Land: ", "synthetic RNI-shaped files (sites, products, PAR rules, orders, lots, consumption, returns, telemetry) "
+     "land in a Unity Catalog volume → Bronze."),
+    ("Conform: ", "loaded to Silver Delta tables with primary keys and CHECK constraints; a lot-level ledger "
+     "reconciles to on-hand stock (69 integrity checks)."),
+    ("Forecast (ML): ", "the forecasting task backtests and selects models, logs to MLflow and registers the model in "
+     "Unity Catalog; forecasts are written to the ml schema."),
+    ("Decide (rules): ", "the decision engine scores every pending request and every site/product cycle review, "
+     "writing recommendations, explanations and risk flags."),
+    ("Serve: ", "Gold views and KPI tables feed the dashboard, Genie and the App from one set of definitions."),
+    ("Act: ", "the App drafts cases with the LLM, planners decide, and Lakebase records every case, review, override "
+     "and AI action."),
+    ("Prove: ", "62 automated tests run as the last task of the same job, against the live tables."),
+], "List Number")
+para("All six steps run as one serverless Lakeflow job (rni-command-center-data-pipeline), deployed by the bundle.",
+     italic=True, color=GREY)
+
+h("6.4 Where Lakebase helps", 2)
+para("The Gold layer answers analytical questions over millions of rows. A review workflow needs something different: "
+     "small, frequent, transactional writes with instant read-back. That is what Lakebase (managed, serverless "
+     "Postgres inside Databricks) is for.")
+table(["What Lakebase stores (schema rni_ops)", "Why it belongs in Lakebase"], [
+    ["investigation_cases: one row per case, updated as status changes", "Row-level updates and low-latency reads "
+     "while the planner clicks"],
+    ["planner_reviews: every status change with reviewer and comment", "Append-only audit trail with transactions"],
+    ["decision_overrides: engine quantity vs human-approved quantity", "Shows where and why people overrode the "
+     "engine; feeds model and policy tuning"],
+    ["agent_activity: every AI action (facts gathered, narrative generated)", "Accountability for AI: what it did, "
+     "when, on whose behalf"],
+    ["user_feedback: ratings on answers", "Improves Genie instructions and prompts over time"],
+], widths=[3.2, 3.4])
+bullets([
+    ("Operational benefits: ", "autoscaling 0.5–1 CU and scale-to-zero after 10 minutes idle (pay only while used); "
+     "the App connects with short-lived OAuth credentials from its service principal, so no database passwords exist."),
+    ("Why not just Delta tables? ", "Delta is excellent for analytics, but per-click single-row updates from an App are "
+     "a transactional (OLTP) pattern. Lakebase keeps both on one platform, governed together; case history can be "
+     "synced back to Unity Catalog for reporting on reviewer decisions."),
+    ("Resilience: ", "if Lakebase is unavailable the App says so and uses a clearly labelled demo-only store, so the "
+     "demo never breaks."),
+])
+
+h("6.5 Where Zerobus Ingest fits (roadmap, not in this demo)", 2)
+callout("BE CLEAR:", "Zerobus is not running in this build. Device telemetry today is synthetic and processed in the "
+        "batch job. Present Zerobus as the production path for live cabinet data.", "FBEAEA", RED)
+bullets([
+    ("What it is: ", "Zerobus Ingest lets producers (devices, gateways, services) write records directly into Unity "
+     "Catalog Delta tables over gRPC, in near real time, without running Kafka or another message bus."),
+    ("How it would work for RNI: ", "RNI cabinet events (temperature, door open, compressor vibration, dispense / "
+     "restock scans) → ClearBlade or the device gateway → Zerobus Ingest → Bronze Delta table in Unity Catalog → "
+     "streaming scoring (Lakeflow) → Gold device_health and on-hand updates → the same App screens and case workflow."),
+    ("Why it matters to the business: ", "temperature excursions and device faults reach planners in minutes, "
+     "prioritised by the value and criticality of stock inside; dispense scans would make on-hand and consumption "
+     "near real time, which sharpens the forecast and the shipment decision."),
+    ("Why it matters to IT: ", "one fewer system to run (no message bus), governance from the first record, and "
+     "the same lineage and permissions as the rest of the data."),
+])
+
+h("6.6 Governance and safety built in", 2)
+bullets([
+    "Everything lives in one Unity Catalog catalog (rni_demo: bronze, silver, ml, gold) with lineage from raw file to "
+    "dashboard tile.",
+    "The App runs as its own service principal with SELECT on Gold only; no credentials in code; resources injected "
+    "at deploy time.",
+    "No free-form SQL from AI: the App's queries are a fixed allow-list; Genie is limited to curated Gold tables and "
+    "shows its SQL.",
+    "AI never picks a quantity and no action can create, change or return a shipment in SAP.",
+    "Every AI answer is labelled with its source (live Genie, LLM endpoint, or fallback).",
+    "Reproducible: the data, forecasts and recommendations regenerate identically from the job; 62 tests pass.",
+])
+
+h("7. Presenter checklist")
 bullets([
     "15 minutes before: open the App and click through every tab once, and open the dashboard, so the SQL warehouse "
     "and the case store are warm (first load can take 10–30 seconds).",
@@ -375,6 +510,8 @@ bullets([
     "list, which is fine — or point at the newest one.",
     "Decide in advance how you'll present the Business Value net-benefit tile (see the note in Act 5).",
     "Have the Genie space open in a spare browser tab as a backup for Act 3.",
+    "In the dry run, confirm the badges: Ask RNI AI shows “Live Genie response”, the case summary names the model "
+    "endpoint, and the case store shows Lakebase (not the demo-only store).",
     "Say the ground rule at the start: synthetic data, no live RNI or SAP systems, nothing creates a shipment or a return.",
 ])
 

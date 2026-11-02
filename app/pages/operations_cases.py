@@ -6,7 +6,7 @@ import streamlit as st
 
 import services as svc
 import ui
-from src.agents.cases import APPROVED, NEEDS_INFO, PENDING, REJECTED, TRANSITIONS, transition
+from src.agents.cases import APPROVED, NEEDS_INFO, PENDING, REJECTED, REVIEWER_ROLES, TRANSITIONS, transition
 
 ui.header("AI Operations Cases", "AI-assisted investigation of flagged requests — every decision stays with a human planner")
 store = svc.get_store_cached()
@@ -125,5 +125,26 @@ if case:
                     st.warning(str(e))
     else:
         st.info(f"This case is {case.status.replace('_', ' ').lower()} (final).")
+
+# ------------------------------------------------------------------------------------------- admin
+if role in REVIEWER_ROLES:
+    st.markdown("---")
+    with st.expander("Administration"):
+        with st.form("reset_cases"):
+            st.markdown("**Reset Cases** — permanently deletes all investigation cases with their reviews, overrides "
+                        "and activity history.")
+            confirm = st.text_input("Type RESET to confirm")
+            if st.form_submit_button("Reset Cases"):
+                if confirm.strip() != "RESET":
+                    st.warning("Type RESET to confirm.")
+                else:
+                    try:
+                        n = store.reset_cases(user)
+                        st.session_state.pop("open_case", None)
+                        st.success(f"{n} case{'s' if n != 1 else ''} deleted.")
+                        st.rerun()
+                    except Exception:
+                        svc.log.exception("case reset failed")
+                        st.info("Cases could not be reset right now. Please retry.")
 ui.footnote("Cases are decision-support records. Approving a case records a human decision only; it does not create "
             "or modify any SAP shipment or return.")

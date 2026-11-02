@@ -119,6 +119,14 @@ class _BaseStore:
                    (_uid("ACT"), case_id, activity, actor, json.dumps(detail, default=str),
                     dt.datetime.now(dt.timezone.utc).replace(microsecond=0)))
 
+    def reset_cases(self, actor: str) -> int:
+        """Delete every case with its reviews, overrides and activity; user feedback is kept. Returns cases deleted."""
+        n = len(self._exec(f"SELECT case_id FROM {self._t('investigation_cases')}", fetch=True))
+        for t in ("planner_reviews", "decision_overrides", "agent_activity", "investigation_cases"):
+            self._exec(f"DELETE FROM {self._t(t)}")
+        self.log_activity(None, "CASES_RESET", actor, {"cases_deleted": n})
+        return n
+
     def save_feedback(self, screen: str, question: str, rating: int, comment: str, user_email: str):
         self._exec(f"INSERT INTO {self._t('user_feedback')} VALUES ({', '.join([self.ph] * 7)})",
                    (_uid("FB"), screen, question, int(rating), comment, user_email,

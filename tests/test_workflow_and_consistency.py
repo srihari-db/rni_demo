@@ -148,3 +148,29 @@ def test_e2e_500_dose_request_flagged_evidenced_and_case_created(frame_repo, tmp
     store.record_review(case, PENDING)
     back = store.get_case(case.case_id)
     assert back.status == APPROVED and back.human_approved_qty == 15 and back.sap_action.startswith("NONE")
+
+
+def test_reset_cases_clears_cases_and_logs_reset(tmp_path):
+    import datetime as dt
+    from src.agents.cases import InvestigationCase
+    from src.lakebase.store import SqliteCaseStore
+    store = SqliteCaseStore(str(tmp_path / "cases.db"))
+    now = dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
+    case = InvestigationCase(case_id="CASE-T1", customer_id="CUST-001", customer_name="Desert Crest Medical Center",
+                             sku="SKU-1001", product_name="Hyperimmune Globulin 1,500 IU", order_line_id="OL-1",
+                             recommendation_id="R-1", requested_qty=500, recommended_qty=15, human_approved_qty=None,
+                             risk_category="EXCESSIVE_REQUEST", evidence={}, ai_summary="", risk_explanation="",
+                             proposed_next_action="", missing_information=[], summary_source="DETERMINISTIC_FALLBACK",
+                             status=PENDING, reviewer=None, reviewer_comments=None, created_by="planner@demo",
+                             sap_action="NONE", created_at=now, updated_at=now)
+    store.save_case(case)
+    transition(case, APPROVED, "rev@demo", "planner", "ok", 20)
+    store.record_review(case, PENDING)
+    store.save_feedback("cases", "q", 5, "", "planner@demo")
+    assert store.reset_cases("admin@demo") == 1
+    assert store.list_cases() == []
+    for t in ("planner_reviews", "decision_overrides"):
+        assert store._exec(f"SELECT * FROM rni_ops_{t}", fetch=True) == []
+    act = store._exec("SELECT activity, actor FROM rni_ops_agent_activity", fetch=True)
+    assert act == [{"activity": "CASES_RESET", "actor": "admin@demo"}]
+    assert len(store._exec("SELECT * FROM rni_ops_user_feedback", fetch=True)) == 1   # feedback kept

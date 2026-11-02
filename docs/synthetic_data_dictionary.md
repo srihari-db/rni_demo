@@ -49,8 +49,8 @@ the same everywhere.
 
 | Entity | Format | Example |
 |---|---|---|
-| Customer | `CUST-NNN` | `CUST-001` = Hospital A |
-| Product / SKU | `SKU-NNNN` | `SKU-1001` = Product A |
+| Customer | `CUST-NNN` | `CUST-001` = Desert Crest Medical Center ("Hospital A" in the brief) |
+| Product / SKU | `SKU-NNNN` | `SKU-1001` = Hyperimmune Globulin 1,500 IU ("Product A" in the brief) |
 | Device | `RNI-DEV-CCNN` | `RNI-DEV-0101` |
 | Lot | `L<sku4>-<yymm><A-Z>`, scenario lots end in `X` | `L1017-2502X` |
 | Order / line | `SO-<yymmdd>-<cust>` / `-Lnn` | `SO-261029-001-L01` |
@@ -106,7 +106,7 @@ with the live checks below.
 
 | ID | Scenario | Customer / Product | Staged facts | Engine outcome |
 |---|---|---|---|---|
-| SCN-01 | Excessive shipment | Hospital A / Product A (`CUST-001`/`SKU-1001`) | Requested **500**; consumed **1** in 120 days; on hand **25**; PAR **60**; minimum **40**; **$900**/dose | **EXCESSIVE_REQUEST**, recommend **15** (PAR-only baseline 35), exposure $436,500, human review |
+| SCN-01 | Excessive shipment | Desert Crest Medical Center / Hyperimmune Globulin 1,500 IU (`CUST-001`/`SKU-1001`) | Requested **500**; consumed **1** in 120 days; on hand **25**; PAR **60**; minimum **40**; **$900**/dose | **EXCESSIVE_REQUEST**, recommend **15** (PAR-only baseline 35), exposure $436,500, human review |
 | SCN-02 | Expiration risk | Lakeshore Children's / Oncomab 400 mg | 22 on hand, 14 in a lot expiring in 38 days; uses ~3–4/month; request 2 | **EXPIRY_RISK**, recommend 0, ~$21K projected to expire unused |
 | SCN-03 | Stockout risk | Harbor Point Infusion / Corvanta IVIG | ~3 units/day, on hand 6; request 10 | **STOCKOUT_RISK**, recommend 25 |
 | SCN-04 | Intermittent critical demand | Mesa Verde Community / Crotivane Antivenom | 7 vials in one event ~5.5 months ago, none since; on hand 6 < minimum 8 | **CRITICAL_POLICY_HOLD**, recommend 2 (restore minimum), review mandatory |

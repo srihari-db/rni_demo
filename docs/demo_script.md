@@ -33,11 +33,11 @@ are mutually exclusive, so nothing is double-counted.
 
 ## 4–9 min · ML forecasting
 
-**Do:** App → *Inventory Command Center*. Point at the red alert (Hospital A · Product A). Click **Open in Intelligent
+**Do:** App → *Inventory Command Center*. Point at the red alert (Desert Crest · Hyperimmune Globulin). Click **Open in Intelligent
 Shipment Advisor**.
 
 **Say:**
-- "Hospital A asked for 500 doses. It used one dose in the last four months."
+- "Desert Crest Medical Center asked for 500 doses. It used one dose in the last four months."
 - "The forecast was built by an MLflow-tracked pipeline that compared six models, including simple baselines, on
   rolling backtests. For sparse demand like this it picked an intermittent-demand method (TSB) on evaluated
   accuracy, not because it's the fanciest."
@@ -62,7 +62,7 @@ Human-approved decision pending).
 **Do — what-if controls:**
 1. Set *Mandatory minimum* to 60. The recommendation becomes 35: policy drives the target.
 2. Set *Requested* to 15. The *excessive* flag disappears, but the request is still routed to review as
-   **Critical policy hold**: the site holds 25, below its mandatory minimum of 40, and Product A is a critical
+   **Critical policy hold**: the site holds 25, below its mandatory minimum of 40, and this hyperimmune globulin is a critical
    product, so policy keeps a human in the loop.
 3. Click **Reset**.
 
@@ -73,7 +73,7 @@ minimum of 8 holds and review is mandatory.
 
 **Do:** App → *Ask RNI AI*. Click three prevalidated questions:
 1. "Which customers have the highest excess inventory exposure?"
-2. "Why was Hospital A's shipment request flagged?"
+2. "Why was Desert Crest's shipment request flagged?"
 3. "How much was returned during the last 12 months?"
 
 **Say:** "Genie answers in plain English on the same governed Gold tables the dashboard uses: same definitions, same

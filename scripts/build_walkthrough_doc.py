@@ -151,8 +151,8 @@ table(["Item", "Detail"], [
 
 # ================================================================================================ story
 h("1. The story in one paragraph")
-para("It is Tuesday morning at RNI. Overnight, Hospital A submitted a replenishment request for 500 doses of "
-     "Product A, a $900-per-dose hyperimmune globulin. Hospital A used one dose in the last four months. Today a planner "
+para("It is Tuesday morning at RNI. Overnight, Desert Crest Medical Center submitted a replenishment request for 500 doses of "
+     "Hyperimmune Globulin 1,500 IU, a $900-per-dose emergency biologic. Desert Crest used one dose in the last four months. Today a planner "
      "would either ship it (and FFF eats the cold-chain return and expiry later) or spend an hour pulling reports to "
      "push back. In the next 20 minutes we follow that one request from the moment it surfaces to the moment a planner "
      "approves the right quantity, and along the way we meet four other sites whose problems look nothing alike, but "
@@ -162,7 +162,7 @@ say("We are going to follow one request — 500 doses for a site that used one �
 
 h("Meet the cast (the five scenarios)", 2)
 table(["#", "Site · product", "What's happening", "Request → engine says", "Category the engine assigns"], [
-    ["1 (lead)", "Hospital A · Product A (hyperimmune globulin, $900)", "Asked for 500; used 1 in 120 days; on hand 25, "
+    ["1 (lead)", "Desert Crest Medical Center · Hyperimmune Globulin 1,500 IU ($900 a dose)", "Asked for 500; used 1 in 120 days; on hand 25, "
      "PAR 60, minimum 40", "500 → 15 (simple PAR top-up would say 35)", "Excessive request · $436.5K potential exposure"],
     ["2", "Harbor Point Infusion Center · Corvanta IVIG 10%", "Busy site (361 used in 120 days), only 6 on hand",
      "10 → 25", "Stockout risk: the request is too SMALL"],
@@ -198,9 +198,9 @@ tech("Databricks AI/BI Dashboard on a serverless SQL warehouse, reading Gold vie
 h("Act 1 · Inventory Command Center (3 min): “The morning alert”", 2)
 rich([("Open: ", True), ("App → Inventory Command Center.", False)])
 bullets([
-    ("The red banner: ", "“Potentially excessive request — Hospital A · Product A. Requested 500 · consumed 1 in the last "
+    ("The red banner: ", "“Potentially excessive request — Desert Crest · Hyperimmune Globulin. Requested 500 · consumed 1 in the last "
      "120 days · on hand 25 vs PAR 60 (minimum 40) · engine recommends 15 · potential exposure $436,500.”"),
-    ("Scroll to “High-priority shipment requests for review”: ", "Hospital A is priority 1; Summit Hematology (cast #5) "
+    ("Scroll to “High-priority shipment requests for review”: ", "Desert Crest Medical Center is priority 1; Summit Hematology (cast #5) "
      "is right behind at priority 3. Harbor Point, Mesa Verde and Lakeshore are in the same queue for very different "
      "reasons. Name them now; we'll come back to each."),
     ("Top-10 locations chart: ", "excess on hand vs pending-request exposure, so leadership sees which sites drive it."),
@@ -245,11 +245,11 @@ table(["Do this in the Advisor", "What the screen shows", "Line to say"], [
     ["Switch to Lakeshore · Oncomab (cast #4)", "Recommend 0 · Expiry risk · ~$21K projected to expire unused",
      "“Don't ship more; move what's about to expire to a site that will use it.”"],
     ["Switch to Summit Hematology · Hemofix (cast #5)", "90 → 0 · Excessive · 6 returns in 12 months",
-     "“The same pattern as Hospital A at a different site, and this one has a return history to prove it.”"],
+     "“The same pattern as Desert Crest Medical Center at a different site, and this one has a return history to prove it.”"],
 ], widths=[2.0, 2.3, 2.5])
 wow("Five sites, five different answers (more, less, hold the floor, rebalance, decline) from one engine "
     "in under two minutes. That is what “intelligent” means here.")
-rich([("Switch back to Hospital A · Product A before moving on.", True)])
+rich([("Switch back to Desert Crest · Hyperimmune Globulin before moving on.", True)])
 
 # ---- Act 3
 tech("ML + deterministic engine. The forecast is MACHINE LEARNING: a Lakeflow (serverless) job classifies every site/product series, backtests six models, picks the best per demand class, tracks every run in MLflow and registers the model in Unity Catalog (rni_demo.ml.rni_demand_forecaster). The quantity (15) is NOT AI: it comes from a deterministic Python decision engine with unit tests; the App reruns it live for the what-ifs, so the answer is reproducible and auditable.")
@@ -257,7 +257,7 @@ tech("ML + deterministic engine. The forecast is MACHINE LEARNING: a Lakeflow (s
 h("Act 3 · Ask RNI AI (4 min): “Ask it in plain English”", 2)
 rich([("Open: ", True), ("App → Ask RNI AI. Click three of the suggested questions:", False)])
 bullets([
-    "“Why was Hospital A's shipment request flagged?” (ties straight back to Act 2)",
+    "“Why was Desert Crest's shipment request flagged?” (ties straight back to Act 2)",
     "“Which customers have the highest excess inventory exposure?”",
     "“How much was returned during the last 12 months?” (should match the $4.83M on the dashboard)",
 ], "List Number")
@@ -276,12 +276,12 @@ para("Expect 15–20 seconds per answer. If Genie is slow, the App switches to v
 tech("GENERATIVE AI (BI). AI/BI Genie space “RNI Inventory Intelligence Agent” turns English into SQL over 12 curated Gold tables, guided by business definitions, example SQL and benchmark questions (all 8 benchmarks matched verified SQL). The App calls Genie through the Conversation API and badges every answer as live Genie or curated fallback. Unity Catalog permissions apply to every query.")
 
 h("Act 4 · AI Operations Cases (4 min): “From insight to a signed-off decision”", 2)
-rich([("Do: ", True), ("Back in the Advisor (Hospital A), click “Create investigation case →”. The case opens in "
+rich([("Do: ", True), ("Back in the Advisor (Desert Crest), click “Create investigation case →”. The case opens in "
                        "AI Operations Cases.", False)])
 bullets([
     ("Show the case: ", "AI-written summary, risk explanation, missing information, proposed next action and the "
      "evidence table. The badge shows which model wrote the narrative."),
-    ("Choose “Needs more information”, ", "type a comment (e.g. “Confirm with Hospital A pharmacy whether a new protocol "
+    ("Choose “Needs more information”, ", "type a comment (e.g. “Confirm with Desert Crest pharmacy whether a new protocol "
      "drives the 500 request”) and submit."),
     ("Reopen and Approve ", "with a human-approved quantity of 15. Go back to the Advisor: the fourth bar, "
      "“Human-approved decision”, now shows 15."),
@@ -337,8 +337,8 @@ say("One request, one morning: we saw the alert, understood why 15 was right and
 # ================================================================================================ matrix
 h("3. How the scenarios tie to the tabs")
 table(["Scenario", "Command Center", "Shipment Advisor", "Ask RNI AI", "Cases", "Value / Device"], [
-    ["Hospital A · Product A", "Red banner; priority 1 in queue", "Centerpiece: 500 → 15 vs PAR 35; what-ifs",
-     "“Why was Hospital A's request flagged?”", "Case created, reviewed, approved at 15", "Drives excess and "
+    ["Desert Crest · Hyperimmune Globulin", "Red banner; priority 1 in queue", "Centerpiece: 500 → 15 vs PAR 35; what-ifs",
+     "“Why was Desert Crest's request flagged?”", "Case created, reviewed, approved at 15", "Drives excess and "
      "pending-request exposure"],
     ["Harbor Point · IVIG", "In review queue", "Too-small request: 10 → 25", "—", "Optional second case", "Availability "
      "margin protected"],
@@ -517,7 +517,7 @@ bullets([
 
 h("10-minute short cut", 2)
 bullets([
-    "Act 1 (alert) → Act 2 (Hospital A + one switch to Mesa Verde antivenom) → Act 3 (one Genie question) → "
+    "Act 1 (alert) → Act 2 (Desert Crest + one switch to Mesa Verde antivenom) → Act 3 (one Genie question) → "
     "Act 4 (create and approve the case). Skip the dashboard, value simulator and devices.",
 ])
 

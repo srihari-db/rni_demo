@@ -19,10 +19,10 @@ scenarios:
   - scenario_id: SCN-01
     name: "Excessive shipment request"
     scenario_type: EXCESSIVE_SHIPMENT
-    customer_id: CUST-001        # Hospital A
-    sku: SKU-1001                # Product A
+    customer_id: CUST-001        # Desert Crest Medical Center
+    sku: SKU-1001                # Hyperimmune Globulin 1,500 IU
     narrative: >-
-      Hospital A requested 500 doses of Product A even though it consumed only 1 dose over the last four months.
+      Desert Crest Medical Center requested 500 doses of Hyperimmune Globulin 1,500 IU even though it consumed only 1 dose over the last four months.
       It holds 25 doses against a PAR of 60 and a mandatory minimum of 40. A simple PAR-only top-up would be
       35 doses; the decision engine applies the full set of configured constraints and flags the request for
       human review.

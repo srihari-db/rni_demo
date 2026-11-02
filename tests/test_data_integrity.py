@@ -45,8 +45,8 @@ def test_hospital_a_scenario_exact(tables, snapshot):
     assert int(u.quantity_consumed.sum()) == 1
     assert float(tables["product_master"].set_index("sku").loc["SKU-1001", "unit_cost"]) == 900.0
     names = tables["customer_master"].set_index("customer_id").customer_name
-    assert names["CUST-001"] == "Hospital A"
-    assert tables["product_master"].set_index("sku").loc["SKU-1001", "product_name"].startswith("Product A")
+    assert names["CUST-001"] == "Desert Crest Medical Center"
+    assert tables["product_master"].set_index("sku").loc["SKU-1001", "product_name"] == "Hyperimmune Globulin 1,500 IU"
     so = tables["shipment_orders"]
     req = so[(so.scenario_id == "SCN-01") & (so.order_status == "PENDING_REVIEW")]
     assert len(req) == 1 and int(req.requested_qty.iloc[0]) == 500

@@ -33,7 +33,7 @@ def _run(page, repo, tmp_path, **state):
 def test_command_center_renders_with_500_dose_alert(repo, tmp_path):
     at = _run("command_center.py", repo, tmp_path)
     html = " ".join(m.value for m in at.markdown)
-    assert "Total inventory deployed" in html and "Potentially excessive request" in html and "Hospital A" in html
+    assert "Total inventory deployed" in html and "Potentially excessive request" in html and "Desert Crest Medical Center" in html
     assert len(at.dataframe) >= 1
 
 

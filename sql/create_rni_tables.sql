@@ -16,7 +16,7 @@ CREATE VOLUME IF NOT EXISTS {{catalog}}.bronze.landing COMMENT 'Landing zone for
 -- ----------------------------------------------------------------------------------------------- masters
 CREATE OR REPLACE TABLE {{catalog}}.silver.customer_master (
   customer_id     STRING NOT NULL COMMENT 'Stable RNI customer location identifier (e.g. CUST-001).',
-  customer_name   STRING NOT NULL COMMENT 'Fictional customer location name. "Hospital A" is the executive demo scenario site.',
+  customer_name   STRING NOT NULL COMMENT 'Fictional customer location name. "Desert Crest Medical Center" (CUST-001) is the executive demo scenario site.',
   location        STRING COMMENT 'City, state of the customer location (fictional site).',
   customer_type   STRING COMMENT 'Facility type, e.g. Hospital, Infusion Center, Critical Access Hospital, Specialty Clinic.',
   region          STRING COMMENT 'Sales/service region: West, Southwest, Midwest, Southeast, Northeast.',
@@ -26,7 +26,7 @@ CREATE OR REPLACE TABLE {{catalog}}.silver.customer_master (
 ) COMMENT 'RNI customer locations (synthetic).' TBLPROPERTIES ('rni_demo.managed'='true');
 
 CREATE OR REPLACE TABLE {{catalog}}.silver.product_master (
-  sku                 STRING NOT NULL COMMENT 'Stable product/SKU identifier (e.g. SKU-1001). "Product A" is SKU-1001.',
+  sku                 STRING NOT NULL COMMENT 'Stable product/SKU identifier (e.g. SKU-1001). SKU-1001 (Hyperimmune Globulin 1,500 IU) is the demo scenario product.',
   product_name        STRING NOT NULL COMMENT 'Fictional product name attached to a generic therapeutic category.',
   product_category    STRING COMMENT 'Therapeutic/product category, e.g. Immune Globulin, Antivenom & Antitoxin, Vaccines.',
   unit_cost           DOUBLE COMMENT 'Synthetic inventory value per unit (USD). Used for all inventory value metrics.',

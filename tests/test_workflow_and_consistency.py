@@ -14,7 +14,7 @@ from src.genie.space_config import EXAMPLE_SQL, GENIE_TABLES, serialized_space
 
 
 def _case(**kw):
-    d = dict(customer_id="CUST-001", customer_name="Hospital A", sku="SKU-1001", product_name="Product A",
+    d = dict(customer_id="CUST-001", customer_name="Desert Crest Medical Center", sku="SKU-1001", product_name="Hyperimmune Globulin 1,500 IU",
              requested_qty=500, recommended_qty=15, risk_category="EXCESSIVE_REQUEST", evidence={}, ai_summary="s",
              risk_explanation="r", proposed_next_action="a", missing_information=[], summary_source="DETERMINISTIC_FALLBACK",
              created_by="planner@x")

@@ -9,7 +9,7 @@ from __future__ import annotations
 # pipeline never reads it; it classifies demand from the observed history instead.
 PRODUCTS = [
     # sku,      product_name,                                   category,                    unit_cost, shelf, storage,       critical, pack, profile,       uom
-    ("SKU-1001", "Product A – Hyperimmune Globulin 1,500 IU", "Immune Globulin",             900.0,  730, "REFRIGERATED", True,  5,  "EMERGENCY",    "dose"),
+    ("SKU-1001", "Hyperimmune Globulin 1,500 IU", "Immune Globulin",             900.0,  730, "REFRIGERATED", True,  5,  "EMERGENCY",    "dose"),
     ("SKU-1002", "Corvanta IVIG 10% 10 g",                     "Immune Globulin",            1180.0,  900, "REFRIGERATED", False, 1,  "REGULAR",      "unit"),
     ("SKU-1003", "Imuvex SCIG 20% 4 g",                        "Immune Globulin",             640.0,  730, "REFRIGERATED", False, 5,  "REGULAR",      "unit"),
     ("SKU-1004", "Plasmorin Albumin 25% 50 mL",                "Albumin & Plasma Proteins",   165.0, 1095, "ROOM_TEMP",    False, 10, "REGULAR",      "vial"),
@@ -49,7 +49,7 @@ MANUFACTURERS = ["Aurelis Biologics (fictional)", "Northwind Plasma (fictional)"
 
 # customer_id, name, city/state, customer_type, region, size_factor, ordering_bias, p_excess, return_propensity
 CUSTOMERS = [
-    ("CUST-001", "Hospital A",                              "Phoenix, AZ",      "Hospital",               "Southwest", 1.0, 1.35, 0.10, 0.55),
+    ("CUST-001", "Desert Crest Medical Center",              "Phoenix, AZ",      "Hospital",               "Southwest", 1.0, 1.35, 0.10, 0.55),
     ("CUST-002", "Lakeshore Children's Hospital",           "Chicago, IL",      "Pediatric Hospital",     "Midwest",   1.1, 1.10, 0.05, 0.40),
     ("CUST-003", "Harbor Point Infusion Center",            "San Diego, CA",    "Infusion Center",        "West",      1.3, 0.75, 0.02, 0.15),
     ("CUST-004", "Mesa Verde Community Hospital",           "Durango, CO",      "Critical Access Hospital", "Southwest", 0.5, 1.00, 0.04, 0.20),

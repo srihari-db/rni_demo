@@ -40,7 +40,7 @@ Rules:
   inventory_value.
 - To explain why a request was flagged, use shipment_review_queue (review_reason, risk_category, requested_qty,
   recommended_qty, consumed_last_120d, potential_exposure_value).
-- Hospital A is customer_id CUST-001; Product A is sku SKU-1001.
+- Desert Crest Medical Center (called "Hospital A" in the original brief) is customer_id CUST-001; Hyperimmune Globulin 1,500 IU ("Product A") is sku SKU-1001.
 - Present currency as USD and label results as synthetic.
 - Do not provide clinical or dosing advice; stocking levels for emergency products follow approved policy and human review.
 """
@@ -57,7 +57,7 @@ FROM {g}.inventory_value_metrics GROUP BY customer_name, region ORDER BY potenti
 FROM {g}.consumption_vs_shipments_monthly
 WHERE month > ADD_MONTHS((SELECT as_of_date FROM {g}.kpi_executive), -12)
 GROUP BY product_name, product_category HAVING SUM(shipped_qty) > 0 ORDER BY return_rate DESC LIMIT 10"""),
-    ("Why was Hospital A's shipment request flagged?",
+    ("Why was Desert Crest's shipment request flagged?",
      """SELECT customer_name, product_name, requested_qty, recommended_qty, par_only_baseline_qty, on_hand_qty, par_level,
        mandatory_minimum, consumed_last_120d, ROUND(forecast_30d_qty, 2) AS forecast_30d_qty, risk_category,
        ROUND(potential_exposure_value, 0) AS potential_exposure_usd, review_reason

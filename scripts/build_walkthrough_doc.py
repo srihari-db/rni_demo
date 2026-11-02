@@ -289,7 +289,7 @@ bullets([
 say("The assistant gathers the facts and drafts the case, but it cannot change the quantity and it cannot touch SAP. "
     "The planner decides, and every step is recorded for audit.")
 wow("The loop closes on screen: alert → explanation → AI-drafted case → human decision → the chart updates. "
-    "Pending → Needs more info → Pending → Approved, all logged.")
+    "Pending review → Needs more info → Approved, all logged.")
 
 # ---- Act 5
 tech("GENERATIVE AI + LAKEBASE. The case narrative is written by an LLM on Databricks Model Serving (Foundation Model API endpoint databricks-claude-sonnet-4-5). It receives facts gathered by fixed, governed queries and the engine's output, and returns text only — it cannot set quantities. Cases, reviews, overrides and the AI activity log are written to LAKEBASE (managed Postgres) because this is transactional app state: millisecond reads/writes, row updates and status changes that a warehouse is not designed for.")
@@ -506,8 +506,8 @@ bullets([
     "15 minutes before: open the App and click through every tab once, and open the dashboard, so the SQL warehouse "
     "and the case store are warm (first load can take 10–30 seconds).",
     "Make sure the App is running (Compute → Apps → rni-command-center). Stop it after the session.",
-    "Do one dry run of Act 4 the day before so you know how the case screen looks; cases from rehearsals stay in the "
-    "list, which is fine — or point at the newest one.",
+    "Do one dry run of Act 4 the day before so you know how the case screen looks; then clear rehearsal cases with "
+    "AI Operations Cases → Administration → type RESET → Reset Cases, so the live case is the only one on screen.",
     "Decide in advance how you'll present the Business Value net-benefit tile (see the note in Act 5).",
     "Have the Genie space open in a spare browser tab as a backup for Act 3.",
     "In the dry run, confirm the badges: Ask RNI AI shows “Live Genie response”, the case summary names the model "

@@ -101,7 +101,7 @@ human-approved quantity of 15.
 narrative. It can't change quantities or touch SAP. The planner decides, and every step is recorded in Lakebase for
 audit."
 
-**Expected behavior:** the status moves PENDING → NEEDS MORE INFO → PENDING → APPROVED, and the Advisor's
+**Expected behavior:** the status moves PENDING REVIEW → NEEDS MORE INFO → APPROVED, and the Advisor's
 "Human-approved decision" bar now shows 15.
 
 ## 23–25 min · Future vision

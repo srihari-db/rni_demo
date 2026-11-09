@@ -6,3 +6,6 @@ __pycache__/
 .DS_Store
 *.egg-info/
 /tmp/
+
+# Office lock files
+~$*

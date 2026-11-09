@@ -36,4 +36,7 @@ def score(telemetry: pd.DataFrame) -> pd.DataFrame:
         out.append(g)
     cols = ["device_id", "customer_id", "event_timestamp", "temperature_c", "vibration_mm_s", "compressor_status",
             "z_vibration", "z_temperature", "anomaly_score", "is_anomaly"]
-    return pd.concat(out, ignore_index=True)[cols]
+    res = pd.concat(out, ignore_index=True)
+    if "door_open_events" in res:            # context signal, passed through (not scored)
+        cols.append("door_open_events")
+    return res[cols]

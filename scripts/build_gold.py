@@ -60,6 +60,9 @@ def main(argv=None):
     cat = args.catalog
     spark = runtime.get_spark()
 
+    scored = f"{cat}.ml.device_telemetry_scored"
+    if "door_open_events" not in spark.table(scored).columns:   # tables created before door events were carried through
+        spark.sql(f"ALTER TABLE {scored} ADD COLUMNS (door_open_events INT COMMENT 'Door openings in the interval.')")
     tel = runtime.to_pandas(spark, f"{cat}.silver.device_telemetry")
     runtime.write_pandas(spark, score(tel), f"{cat}.ml.device_telemetry_scored")
 

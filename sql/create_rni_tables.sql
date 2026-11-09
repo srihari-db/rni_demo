@@ -306,7 +306,8 @@ CREATE OR REPLACE TABLE {{catalog}}.ml.device_telemetry_scored (
   z_vibration   DOUBLE COMMENT 'Vibration z-score vs the device''s own first-14-day baseline (4h rolling mean).',
   z_temperature DOUBLE COMMENT 'Temperature z-score vs baseline.',
   anomaly_score DOUBLE COMMENT '0-1 logistic transform of the max z-score (>=0.8 = anomalous). Illustrative, not a failure prediction.',
-  is_anomaly    BOOLEAN COMMENT 'anomaly_score >= 0.8 sustained for >= 1 hour.'
+  is_anomaly    BOOLEAN COMMENT 'anomaly_score >= 0.8 sustained for >= 1 hour.',
+  door_open_events INT COMMENT 'Door openings in the interval (context signal, passed through; not scored).'
 ) COMMENT 'IoT telemetry scored by the rolling-baseline anomaly detector (src/iot/anomaly.py).' TBLPROPERTIES ('rni_demo.managed'='true');
 
 CREATE OR REPLACE TABLE {{catalog}}.ml.simulation_ground_truth (

@@ -244,7 +244,12 @@ COMMENT 'Hourly device telemetry with anomaly scores (synthetic, illustrative).'
 AS SELECT device_id, customer_id, DATE_TRUNC('HOUR', event_timestamp) AS hour,
           AVG(temperature_c) AS avg_temperature_c, AVG(vibration_mm_s) AS avg_vibration_mm_s,
           MAX(anomaly_score) AS max_anomaly_score, MAX(CAST(is_anomaly AS INT)) = 1 AS any_anomaly,
-          SUM(CASE WHEN compressor_status = 'HIGH_LOAD' THEN 1 ELSE 0 END) AS high_load_readings
+          SUM(CASE WHEN compressor_status = 'HIGH_LOAD' THEN 1 ELSE 0 END) AS high_load_readings,
+          SUM(CASE WHEN compressor_status = 'RUNNING' THEN 1 ELSE 0 END) AS running_readings,
+          SUM(CASE WHEN compressor_status = 'IDLE' THEN 1 ELSE 0 END) AS idle_readings,
+          SUM(CASE WHEN compressor_status = 'DEFROST' THEN 1 ELSE 0 END) AS defrost_readings,
+          COUNT(*) AS readings,
+          COALESCE(SUM(door_open_events), 0) AS door_open_events
    FROM {{catalog}}.ml.device_telemetry_scored GROUP BY ALL;
 
 CREATE OR REPLACE VIEW {{catalog}}.gold.device_health
@@ -252,7 +257,10 @@ COMMENT 'Latest device condition, potentially affected inventory and recommended
 AS
 WITH last24 AS (
   SELECT device_id, MAX(anomaly_score) AS max_anomaly_score_24h, AVG(vibration_mm_s) AS avg_vibration_24h,
-         AVG(temperature_c) AS avg_temperature_24h, SUM(CAST(is_anomaly AS INT)) AS anomalous_readings_24h
+         AVG(temperature_c) AS avg_temperature_24h, SUM(CAST(is_anomaly AS INT)) AS anomalous_readings_24h,
+         AVG(CASE WHEN compressor_status = 'HIGH_LOAD' THEN 1.0 ELSE 0.0 END) AS high_load_share_24h,
+         COALESCE(SUM(door_open_events), 0) AS door_open_events_24h,
+         MAX_BY(compressor_status, event_timestamp) AS latest_compressor_status
   FROM {{catalog}}.ml.device_telemetry_scored
   WHERE event_timestamp > (SELECT MAX(event_timestamp) FROM {{catalog}}.ml.device_telemetry_scored) - INTERVAL 24 HOURS
   GROUP BY device_id
@@ -269,6 +277,7 @@ WITH last24 AS (
 SELECT d.device_id, d.customer_id, c.customer_name, c.region, d.device_type, d.storage_type,
        l.max_anomaly_score_24h, l.anomalous_readings_24h, l.avg_vibration_24h, b.baseline_vibration,
        l.avg_temperature_24h, b.baseline_temperature,
+       l.latest_compressor_status, l.high_load_share_24h, l.door_open_events_24h,
        COALESCE(i.inventory_value_in_device, 0) AS inventory_value_in_device, COALESCE(i.units_in_device, 0) AS units_in_device,
        COALESCE(i.critical_units_in_device, 0) AS critical_units_in_device,
        CASE WHEN l.max_anomaly_score_24h >= 0.8 AND (COALESCE(i.inventory_value_in_device, 0) >= 50000 OR COALESCE(i.critical_units_in_device, 0) > 0) THEN 'HIGH'

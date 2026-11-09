@@ -53,6 +53,12 @@ def test_business_value_and_device_pages_render(repo, tmp_path):
         assert "Realized cash savings" in " ".join(m.value for m in at.markdown) or page != "business_value.py"
 
 
+def test_device_page_shows_compressor_status_and_door_events(repo, tmp_path):
+    at = _run("device_intelligence.py", repo, tmp_path)
+    assert any("Door openings" in c.value for c in at.caption)
+    assert {"latest_compressor_status", "high_load_share_24h", "door_open_events_24h"} <= set(at.dataframe[0].value.columns)
+
+
 def test_cases_page_creates_case(repo, tmp_path, monkeypatch):
     monkeypatch.setenv("RNI_DISABLE_LLM", "1")
     at = _run("operations_cases.py", repo, tmp_path)

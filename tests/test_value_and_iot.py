@@ -46,3 +46,13 @@ def test_iot_detector_quiet_on_stable_signal():
     df = pd.DataFrame(dict(device_id="D", customer_id="C", event_timestamp=ts, temperature_c=5 + rng.normal(0, .15, 2880),
                            vibration_mm_s=1.8 + rng.normal(0, .12, 2880), compressor_status="RUNNING"))
     assert not score(df).is_anomaly.any()
+
+
+def test_iot_scoring_carries_door_events_and_status(tables):
+    tel = tables["device_telemetry"]
+    s = score(tel)
+    assert "door_open_events" in s and "compressor_status" in s
+    assert int(s.door_open_events.sum()) == int(tel.door_open_events.sum())
+    planted = s[s.device_id == "RNI-DEV-0701"]
+    assert (planted.compressor_status == "HIGH_LOAD").any()
+    assert not (s[s.device_id != "RNI-DEV-0701"].compressor_status == "HIGH_LOAD").any()

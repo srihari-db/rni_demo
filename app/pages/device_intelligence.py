@@ -27,29 +27,59 @@ with c[3]:
     ui.kpi("Inventory in top-priority device", ui.usd(top.inventory_value_in_device), top.device_id, "amber")
 
 ui.section("Device health")
-st.dataframe(health[["device_id", "customer_name", "device_type", "inspection_priority", "max_anomaly_score_24h",
-                     "avg_vibration_24h", "baseline_vibration", "avg_temperature_24h", "inventory_value_in_device",
-                     "critical_units_in_device"]], hide_index=True, use_container_width=True,
+health_cols = ["device_id", "customer_name", "device_type", "inspection_priority", "max_anomaly_score_24h",
+               "avg_vibration_24h", "baseline_vibration", "avg_temperature_24h", "latest_compressor_status",
+               "high_load_share_24h", "door_open_events_24h", "inventory_value_in_device", "critical_units_in_device"]
+st.dataframe(health[[c for c in health_cols if c in health]], hide_index=True, use_container_width=True,
              column_config={"max_anomaly_score_24h": st.column_config.ProgressColumn("Anomaly score (24 h)", min_value=0, max_value=1),
+                            "latest_compressor_status": st.column_config.TextColumn("Compressor status (latest)"),
+                            "high_load_share_24h": st.column_config.ProgressColumn("Time in HIGH_LOAD (24 h)", min_value=0,
+                                                                                   max_value=1, format="percent"),
+                            "door_open_events_24h": st.column_config.NumberColumn("Door openings (24 h)", format="%d"),
                             "inventory_value_in_device": st.column_config.NumberColumn("Inventory value", format="$%,.0f")})
 
 dev = st.selectbox("Device", health.device_id.tolist(), format_func=lambda d: f"{d} · {health.set_index('device_id').customer_name[d]}")
 hr = svc.safe(lambda: svc.load("device_hourly", device_id=dev), pd.DataFrame())
 if hr is not None and len(hr):
     hr["hour"] = pd.to_datetime(hr.hour)
-    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.08,
-                        subplot_titles=("Compressor vibration (mm/s, hourly mean)", "Internal temperature (°C, hourly mean)"))
+    has_status = {"running_readings", "idle_readings", "defrost_readings", "high_load_readings", "readings"} <= set(hr.columns)
+    has_door = "door_open_events" in hr.columns
+    titles = ["Compressor vibration (mm/s, hourly mean)", "Internal temperature (°C, hourly mean)"]
+    if has_status:
+        titles.append("Compressor status (% of each hour)")
+    if has_door:
+        titles.append("Door openings (per hour)")
+    nrows = len(titles)
+    fig = make_subplots(rows=nrows, cols=1, shared_xaxes=True, vertical_spacing=0.06, subplot_titles=titles,
+                        row_heights=[1.0, 1.0] + [0.7] * (nrows - 2))
     fig.add_scatter(x=hr.hour, y=hr.avg_vibration_mm_s, line=dict(color=ui.NAVY), name="Vibration", row=1, col=1)
     an = hr[hr.any_anomaly]
     fig.add_scatter(x=an.hour, y=an.avg_vibration_mm_s, mode="markers", marker=dict(color=ui.RED, size=6), name="Anomalous hour", row=1, col=1)
     fig.add_scatter(x=hr.hour, y=hr.avg_temperature_c, line=dict(color=ui.TEAL), name="Temperature", row=2, col=1)
     if hr.avg_temperature_c.mean() > 0:
         fig.add_hrect(y0=2, y1=8, fillcolor="rgba(15,163,163,0.06)", line_width=0, row=2, col=1)
-    st.plotly_chart(ui.plotly_layout(fig, 460), use_container_width=True)
+    r = 3
+    if has_status:
+        denom = hr.readings.where(hr.readings > 0)
+        for col, label, color in (("running_readings", "Running", ui.TEAL), ("idle_readings", "Idle", ui.BORDER),
+                                  ("defrost_readings", "Defrost", ui.GREY), ("high_load_readings", "High load", ui.RED)):
+            fig.add_bar(x=hr.hour, y=(hr[col] / denom * 100).fillna(0), name=label, marker_color=color,
+                        marker_line_width=0, row=r, col=1)
+        fig.update_layout(barmode="stack", bargap=0)
+        fig.update_yaxes(range=[0, 100], ticksuffix="%", row=r, col=1)
+        r += 1
+    if has_door:
+        fig.add_bar(x=hr.hour, y=hr.door_open_events, name="Door openings", marker_color=ui.AMBER,
+                    marker_line_width=0, row=r, col=1)
+    st.plotly_chart(ui.plotly_layout(fig, 300 + 160 * (nrows - 1)), use_container_width=True)
+    st.caption("Door openings are context, not a fault signal: a short temperature rise right after door activity is normal; "
+               "a sustained rise together with rising vibration and more time in HIGH_LOAD is what warrants an inspection.")
 
 row = health.set_index("device_id").loc[dev]
 ui.alert(f"<b>Recommended inspection priority: {row.inspection_priority}</b> — max anomaly score {row.max_anomaly_score_24h:.2f} "
-         f"in the last 24 h; vibration {row.avg_vibration_24h:.2f} mm/s vs baseline {row.baseline_vibration:.2f}. "
+         f"in the last 24 h; vibration {row.avg_vibration_24h:.2f} mm/s vs baseline {row.baseline_vibration:.2f}"
+         + (f"; compressor in HIGH_LOAD {row.high_load_share_24h:.0%} of the time" if "high_load_share_24h" in row else "")
+         + (f"; {int(row.door_open_events_24h)} door openings" if "door_open_events_24h" in row else "") + ". "
          "A rising vibration signal suggests an inspection; it does not prove an impending compressor failure.",
          "red" if row.inspection_priority == "HIGH" else "teal")
 ui.section("Potentially affected inventory in this device")
@@ -60,7 +90,8 @@ if lots is not None and len(lots):
                  column_config={"inventory_value": st.column_config.NumberColumn("Inventory value", format="$%,.0f")})
 with st.expander("Future integration design"):
     st.markdown("""
-- **Today (demo):** synthetic 15-minute telemetry in `silver.device_telemetry`, scored by a rolling-baseline detector
+- **Today (demo):** synthetic 15-minute telemetry (temperature, vibration,
+  compressor status, door openings) in `silver.device_telemetry`, scored by a rolling-baseline detector
   (`src/iot/anomaly.py`) into `ml.device_telemetry_scored`.
 - **Next:** stream ClearBlade device messages from Google Cloud Pub/Sub into Unity Catalog with **Zerobus Ingest**
   (direct gRPC writes to Delta) or a retained Pub/Sub → Structured Streaming pipeline; no change to Gold consumers.
